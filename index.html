@@ -1,0 +1,126 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+<meta charset="UTF-8"><meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>智控项目雷达系统 · 实时看板</title>
+<style>
+@import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;700;900&family=Noto+Sans+SC:wght@300;400;500;700&display=swap');
+*{margin:0;padding:0;box-sizing:border-box}
+body{background:radial-gradient(ellipse at 50% 0%,#0F172A 0%,#000 70%);color:#E2E8F0;font-family:'Noto Sans SC',sans-serif;min-height:100vh;overflow-x:hidden}
+body::before{content:'';position:fixed;inset:0;background-image:linear-gradient(rgba(59,130,246,0.04) 1px,transparent 1px),linear-gradient(90deg,rgba(59,130,246,0.04) 1px,transparent 1px);background-size:40px 40px;pointer-events:none;z-index:0}
+.radar-scan{position:fixed;top:50%;left:50%;width:800px;height:800px;transform:translate(-50%,-50%);pointer-events:none;z-index:0}
+.radar-ring{position:absolute;border-radius:50%;border:1px solid rgba(59,130,246,0.08);top:50%;left:50%;transform:translate(-50%,-50%)}
+.radar-ring:nth-child(1){width:200px;height:200px;animation:radar-pulse 3s ease-out infinite}
+.radar-ring:nth-child(2){width:400px;height:400px;animation:radar-pulse 3s ease-out .5s infinite}
+.radar-ring:nth-child(3){width:600px;height:600px;animation:radar-pulse 3s ease-out 1s infinite}
+.radar-ring:nth-child(4){width:800px;height:800px;animation:radar-pulse 3s ease-out 1.5s infinite}
+.radar-sweep{position:absolute;top:50%;left:50%;width:800px;height:800px;transform:translate(-50%,-50%);background:conic-gradient(from 0deg,transparent 0deg,rgba(59,130,246,0.06) 30deg,transparent 60deg);border-radius:50%;animation:radar-spin 4s linear infinite}
+@keyframes radar-spin{from{transform:translate(-50%,-50%) rotate(0deg)}to{transform:translate(-50%,-50%) rotate(360deg)}}
+@keyframes radar-pulse{0%{transform:translate(-50%,-50%) scale(0.5);opacity:0.6}100%{transform:translate(-50%,-50%) scale(1.5);opacity:0}}
+@keyframes status-pulse{0%,100%{opacity:1}50%{opacity:0.3}}
+@keyframes number-glow{0%,100%{text-shadow:0 0 10px currentColor}50%{text-shadow:0 0 30px currentColor,0 0 60px currentColor}}
+@keyframes fadeInUp{from{opacity:0;transform:translateY(20px)}to{opacity:1;transform:translateY(0)}}
+.container{position:relative;z-index:1;max-width:1440px;margin:0 auto;padding:20px 30px}
+.header{text-align:center;padding:30px 0 20px;animation:fadeInUp .8s ease-out}
+.header h1{font-family:'Orbitron',monospace;font-size:2.4rem;font-weight:900;background:linear-gradient(135deg,#3B82F6 0%,#8B5CF6 50%,#06D6A0 100%);-webkit-background-clip:text;-webkit-text-fill-color:transparent;letter-spacing:2px}
+.header .subtitle{font-size:1rem;color:rgba(148,163,184,0.8);margin-top:8px;letter-spacing:4px}
+.header .time{font-family:'Orbitron',monospace;font-size:.85rem;color:#64748B;margin-top:6px}
+.kpi-row{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin:20px 0 30px}
+.kpi-card{background:rgba(30,41,59,0.4);backdrop-filter:blur(12px);border:1px solid rgba(59,130,246,0.2);border-radius:16px;padding:24px;position:relative;overflow:hidden;transition:all .3s ease;animation:fadeInUp .8s ease-out}
+.kpi-card:nth-child(2){animation-delay:.1s}.kpi-card:nth-child(3){animation-delay:.2s}.kpi-card:nth-child(4){animation-delay:.3s}
+.kpi-card:hover{border-color:rgba(59,130,246,0.6);transform:translateY(-2px);box-shadow:0 0 30px rgba(59,130,246,0.15)}
+.kpi-card::before{content:'';position:absolute;top:0;left:0;right:0;height:2px;background:linear-gradient(90deg,#3B82F6,#8B5CF6,#06D6A0)}
+.kpi-label{font-size:.85rem;color:#94A3B8;margin-bottom:8px}
+.kpi-value{font-family:'Orbitron',monospace;font-size:2.4rem;font-weight:900;color:#3B82F6;animation:number-glow 3s ease-in-out infinite}
+.kpi-value.red{color:#EF4444}.kpi-value.yellow{color:#F59E0B}.kpi-value.green{color:#10B981}
+.kpi-sub{font-size:.8rem;color:#64748B;margin-top:4px}
+.kpi-dot{position:absolute;top:20px;right:20px;width:10px;height:10px;border-radius:50%}
+.kpi-dot.red{background:#EF4444;animation:status-pulse 2s ease-in-out infinite}
+.kpi-dot.yellow{background:#F59E0B;animation:status-pulse 2s ease-in-out .5s infinite}
+.kpi-dot.green{background:#10B981;animation:status-pulse 2s ease-in-out 1s infinite}
+.charts-row{display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-bottom:30px}
+.chart-box{background:rgba(30,41,59,0.4);backdrop-filter:blur(12px);border:1px solid rgba(59,130,246,0.2);border-radius:16px;padding:24px;position:relative}
+.chart-box h3{font-size:1rem;color:#94A3B8;margin-bottom:16px;letter-spacing:2px}
+.chart-box canvas{width:100%!important;height:300px!important}
+.insights-row{display:grid;grid-template-columns:repeat(2,1fr);gap:16px;margin-bottom:30px}
+.insight-card{background:rgba(30,41,59,0.4);backdrop-filter:blur(12px);border:1px solid rgba(59,130,246,0.2);border-radius:12px;padding:16px 20px;display:flex;gap:14px;align-items:flex-start;transition:all .3s ease}
+.insight-card:hover{border-color:rgba(59,130,246,0.5)}
+.insight-bar{width:4px;min-height:60px;border-radius:2px;flex-shrink:0}
+.insight-bar.high{background:#EF4444}.insight-bar.medium{background:#F59E0B}
+.insight-content h4{font-size:.85rem;margin-bottom:4px}
+.insight-content h4 .tag{display:inline-block;padding:2px 8px;border-radius:4px;font-size:.7rem;margin-right:6px}
+.tag.high{background:rgba(239,68,68,0.2);color:#EF4444}
+.tag.medium{background:rgba(245,158,11,0.2);color:#F59E0B}
+.insight-content p{font-size:.82rem;color:#94A3B8;line-height:1.5}
+.table-box{background:rgba(30,41,59,0.4);backdrop-filter:blur(12px);border:1px solid rgba(59,130,246,0.2);border-radius:16px;padding:24px;margin-bottom:30px}
+.table-box h3{font-size:1rem;color:#94A3B8;margin-bottom:16px;letter-spacing:2px}
+table{width:100%;border-collapse:collapse;font-size:.85rem}
+th{text-align:left;padding:12px 16px;color:#64748B;font-weight:500;border-bottom:1px solid rgba(59,130,246,0.15);font-size:.78rem;letter-spacing:1px}
+td{padding:12px 16px;border-bottom:1px solid rgba(59,130,246,0.08)}
+tr:hover td{background:rgba(59,130,246,0.05)}
+.risk-badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:.75rem;font-weight:600}
+.risk-badge.high{background:rgba(239,68,68,0.2);color:#EF4444}
+.status-badge{display:inline-block;padding:3px 10px;border-radius:4px;font-size:.75rem}
+.status-badge.paused{background:rgba(239,68,68,0.15);color:#EF4444}
+.status-badge.delayed{background:rgba(245,158,11,0.15);color:#F59E0B}
+.status-badge.risk{background:rgba(139,92,246,0.15);color:#8B5CF6}
+.delay-num{font-family:'Orbitron',monospace;color:#EF4444;font-weight:700}
+.abnormal-row{display:grid;grid-template-columns:repeat(7,1fr);gap:12px;margin-bottom:30px}
+.abnormal-item{background:rgba(30,41,59,0.4);backdrop-filter:blur(12px);border:1px solid rgba(59,130,246,0.15);border-radius:12px;padding:16px;text-align:center}
+.abnormal-item .count{font-family:'Orbitron',monospace;font-size:1.6rem;font-weight:900;background:linear-gradient(135deg,#3B82F6,#8B5CF6);-webkit-background-clip:text;-webkit-text-fill-color:transparent}
+.abnormal-item .label{font-size:.75rem;color:#94A3B8;margin-top:4px}
+.footer{text-align:center;padding:20px;color:#475569;font-size:.75rem}
+@media(max-width:1024px){.kpi-row{grid-template-columns:repeat(2,1fr)}.charts-row{grid-template-columns:1fr}.insights-row{grid-template-columns:1fr}.abnormal-row{grid-template-columns:repeat(4,1fr)}}
+</style>
+</head>
+<body>
+<div class="radar-scan"><div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-ring"></div><div class="radar-sweep"></div></div>
+<div class="container">
+<div class="header"><h1>智控项目雷达系统</h1><div class="subtitle">智能体主动预警 + 闭环督办 · 实时数据</div><div class="time">数据更新: 2026-06-15 09:53:37 | 数据源: 飞书多维表格</div></div>
+<div class="kpi-row">
+<div class="kpi-card"><div class="kpi-label">项目总数</div><div class="kpi-value">100</div><div class="kpi-sub">异常 45 / 正常 41</div><div class="kpi-dot yellow"></div></div>
+<div class="kpi-card"><div class="kpi-label">异常项目</div><div class="kpi-value red">45</div><div class="kpi-sub">异常率 45.0%</div><div class="kpi-dot red"></div></div>
+<div class="kpi-card"><div class="kpi-label">高风险项目</div><div class="kpi-value red">15</div><div class="kpi-sub">高风险率 15.0%</div><div class="kpi-dot red"></div></div>
+<div class="kpi-card"><div class="kpi-label">已完成项目</div><div class="kpi-value green">15</div><div class="kpi-sub">完成率 15.0%</div><div class="kpi-dot green"></div></div>
+</div>
+<div class="charts-row">
+<div class="chart-box"><h3>📊 风险等级分布</h3><canvas id="riskChart"></canvas></div>
+<div class="chart-box"><h3>📈 各项目群风险分布</h3><canvas id="groupChart"></canvas></div>
+</div>
+<div class="abnormal-row"><div class="abnormal-item"><div class="count">12</div><div class="label">资源不足</div></div>
+<div class="abnormal-item"><div class="count">11</div><div class="label">依赖阻塞</div></div>
+<div class="abnormal-item"><div class="count">11</div><div class="label">数据质量问题</div></div>
+<div class="abnormal-item"><div class="count">10</div><div class="label">进度延期</div></div>
+<div class="abnormal-item"><div class="count">9</div><div class="label">需求变更</div></div>
+<div class="abnormal-item"><div class="count">8</div><div class="label">审批阻塞</div></div>
+<div class="abnormal-item"><div class="count">7</div><div class="label">供应商问题</div></div>
+</div>
+<div class="insights-row"><div class="insight-card"><div class="insight-bar high"></div><div class="insight-content"><h4><span class="tag high">高风险</span>4个项目严重延期需立即关注</h4><p>其中2个延期超20天，主要集中在资源不足和供应商问题领域。</p></div></div>
+<div class="insight-card"><div class="insight-bar high"></div><div class="insight-content"><h4><span class="tag high">高风险</span>2个项目处于暂停状态</h4><p>暂停项目需总负责人紧急介入协调，明确恢复时间和责任人。</p></div></div>
+<div class="insight-card"><div class="insight-bar medium"></div><div class="insight-content"><h4><span class="tag medium">中风险</span>主要异常类型：资源不足、依赖阻塞</h4><p>分别影响12个和11个项目。</p></div></div>
+</div>
+<div class="table-box"><h3>🔴 高风险项目明细（按延期天数排序）</h3>
+<table><thead><tr><th>项目编码</th><th>项目名称</th><th>项目群</th><th>负责人</th><th>延期天数</th><th>风险等级</th><th>当前状态</th></tr></thead><tbody><tr><td>FUND-02</td><td>资金管理平台建设｜关键需求访谈与痛点梳理</td><td>FUND</td><td>王辉</td><td class="delay-num">38天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge paused">暂停</span></td></tr>
+<tr><td>FUND-03</td><td>资金管理平台建设｜跨部门流程与字段口径确认</td><td>FUND</td><td>王辉</td><td class="delay-num">28天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>FUND-04</td><td>资金管理平台建设｜方案蓝图与里程碑评审</td><td>FUND</td><td>王辉</td><td class="delay-num">19天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SYS-TAX-07</td><td>数电二期｜发票归档方案</td><td>SYS</td><td>马骁</td><td class="delay-num">15天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SYS-BI-09</td><td>经营分析驾驶舱｜异常指标预警规则</td><td>SYS</td><td>东杰</td><td class="delay-num">10天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SYS-AI-10</td><td>AI速胜项目｜速胜项目复盘</td><td>SYS</td><td>伊绵京</td><td class="delay-num">10天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge paused">暂停</span></td></tr>
+<tr><td>SP-IPO-09</td><td>IPO专项｜期后事项更新</td><td>SP</td><td>郭琳</td><td class="delay-num">10天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SP-FA-10</td><td>固定资产梳理｜专项总结汇报</td><td>SP</td><td>袁斌</td><td class="delay-num">10天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SYS-TAX-04</td><td>数电二期｜销项开票场景测试</td><td>SYS</td><td>马骁</td><td class="delay-num">5天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SP-CON-04</td><td>合同风险识别专项｜验收节点识别</td><td>SP</td><td>秦越</td><td class="delay-num">5天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SYS-MDM-08</td><td>主数据治理｜数据责任人确认</td><td>SYS</td><td>叶梦蝶</td><td class="delay-num">3天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SYS-AI-07</td><td>AI速胜项目｜资金周报助手</td><td>SYS</td><td>伊绵京</td><td class="delay-num">3天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SP-FA-05</td><td>固定资产梳理｜跨部门调拨方案</td><td>SP</td><td>袁斌</td><td class="delay-num">2天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>SYS-AI-06</td><td>AI速胜项目｜费用异常识别PoC</td><td>SYS</td><td>伊绵京</td><td class="delay-num">1天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge delayed">延期</span></td></tr>
+<tr><td>FUND-10</td><td>资金管理平台建设｜复盘评估与运营交接</td><td>FUND</td><td>王辉</td><td class="delay-num">0天</td><td><span class="risk-badge high">高</span></td><td><span class="status-badge risk">风险</span></td></tr>
+</tbody></table></div>
+<div class="footer">智控项目雷达系统 · 数据自动同步自飞书多维表格 · 2026-06-15 09:53:37</div>
+</div>
+<script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+<script>
+new Chart(document.getElementById('riskChart'),{type:'doughnut',data:{labels:["\u9ad8\u98ce\u9669", "\u4e2d\u98ce\u9669", "\u4f4e\u98ce\u9669"],datasets:[{data:[15, 28, 57],backgroundColor:["#EF4444", "#F59E0B", "#10B981"],borderColor:'rgba(0,0,0,0.3)',borderWidth:2}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#94A3B8',padding:20,font:{size:13}}}}}});
+new Chart(document.getElementById('groupChart'),{type:'bar',data:{labels:["SYS-FUND", "FUND-02", "FUND-03", "FUND-04", "FUND-05", "FUND-06", "FUND-07", "FUND-08", "FUND-09", "FUND-10", "SYS-BI", "SYS-MDM", "SYS-EXP", "SYS-TAX", "SYS-AI", "SP-IPO", "SP-FIN", "SP-FA", "SP-CON"],datasets:[{label:'高风险',data:[0, 1, 1, 1, 0, 0, 0, 0, 0, 1, 1, 1, 0, 2, 3, 1, 0, 2, 1],backgroundColor:'#EF4444'},{label:'中风险',data:[0, 0, 0, 0, 0, 1, 0, 1, 0, 0, 3, 3, 4, 2, 2, 3, 4, 2, 3],backgroundColor:'#F59E0B'},{label:'低风险',data:[1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 6, 6, 6, 6, 5, 6, 6, 6, 6],backgroundColor:'#10B981'}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{position:'bottom',labels:{color:'#94A3B8',padding:20,font:{size:13}}}},scales:{x:{stacked:true,ticks:{color:'#94A3B8',maxRotation:45}},y:{stacked:true,ticks:{color:'#94A3B8'}}}}});
+</script>
+</body></html>
