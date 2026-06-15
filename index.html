@@ -60,9 +60,11 @@ body {
   background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border); border-radius: 14px; padding: 20px 22px;
   position: relative; overflow: hidden; transition: all 0.35s cubic-bezier(0.4,0,0.2,1);
+  cursor: pointer; user-select: none;
 }
 .kpi-card::before { content: ''; position: absolute; top: 0; left: 0; right: 0; height: 2px; border-radius: 2px 2px 0 0; }
 .kpi-card:hover { border-color: rgba(100,160,255,0.45); transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,0,0,0.4); }
+.kpi-card.active { border-color: rgba(100,160,255,0.7); box-shadow: 0 0 40px rgba(74,143,255,0.25); }
 .kpi-card.total::before { background: linear-gradient(90deg, var(--accent-blue), var(--accent-purple)); }
 .kpi-card.abnormal::before { background: linear-gradient(90deg, var(--accent-pink), var(--accent-orange)); }
 .kpi-card.highrisk::before { background: linear-gradient(90deg, #FF1744, #FF6D00); }
@@ -72,6 +74,8 @@ body {
 .kpi-card .kpi-label { font-size: 0.72rem; color: var(--text-secondary); letter-spacing: 1px; text-transform: uppercase; margin-bottom: 4px; }
 .kpi-card .kpi-value { font-family: 'Orbitron', monospace; font-size: 2.6rem; font-weight: 900; line-height: 1.1; margin-bottom: 2px; }
 .kpi-card .kpi-sub { font-size: 0.7rem; color: var(--text-muted); font-family: 'JetBrains Mono', monospace; }
+.kpi-card .drill-hint { position: absolute; bottom: 8px; right: 12px; font-size: 0.6rem; color: var(--text-muted); opacity: 0; transition: opacity 0.3s; }
+.kpi-card:hover .drill-hint { opacity: 0.7; }
 .kpi-card.total .kpi-value { color: #6DB3FF; text-shadow: 0 0 30px rgba(74,143,255,0.4); }
 .kpi-card.abnormal .kpi-value { color: #FF6B7A; text-shadow: 0 0 30px rgba(255,59,92,0.4); }
 .kpi-card.highrisk .kpi-value { color: #FF4444; text-shadow: 0 0 30px rgba(255,68,68,0.5); animation: glow-pulse 2s ease-in-out infinite; }
@@ -90,7 +94,10 @@ body {
 .stat-chip {
   background: rgba(20,35,70,0.6); border: 1px solid rgba(80,120,220,0.15);
   border-radius: 8px; padding: 10px 16px; display: flex; flex-direction: column; align-items: center; min-width: 90px;
+  cursor: pointer; transition: all 0.3s;
 }
+.stat-chip:hover { border-color: rgba(100,160,255,0.4); background: rgba(30,50,90,0.7); }
+.stat-chip.active { border-color: var(--accent-blue); box-shadow: 0 0 15px rgba(74,143,255,0.2); }
 .stat-chip .chip-value { font-family: 'Orbitron', monospace; font-size: 1.3rem; font-weight: 800; background: linear-gradient(135deg, var(--accent-blue), var(--accent-purple)); -webkit-background-clip: text; -webkit-text-fill-color: transparent; }
 .stat-chip .chip-label { font-size: 0.68rem; color: var(--text-muted); margin-top: 2px; }
 .insights-row { display: grid; grid-template-columns: repeat(2, 1fr); gap: 14px; margin-bottom: 20px; }
@@ -105,6 +112,47 @@ body {
 .insight-icon { font-size: 1.4rem; flex-shrink: 0; margin-top: 2px; }
 .insight-title { font-size: 0.82rem; font-weight: 600; color: var(--text-primary); margin-bottom: 4px; }
 .insight-desc { font-size: 0.74rem; color: var(--text-secondary); line-height: 1.5; }
+
+/* ===== Drill-down Panel ===== */
+.drill-panel {
+  background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+  border: 1px solid rgba(100,160,255,0.3); border-radius: 14px; padding: 0;
+  margin-bottom: 20px; max-height: 0; overflow: hidden;
+  transition: all 0.4s cubic-bezier(0.4,0,0.2,1);
+  opacity: 0;
+}
+.drill-panel.open { max-height: 2000px; opacity: 1; padding: 20px; }
+.drill-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 16px; }
+.drill-header h3 { font-size: 0.85rem; color: var(--text-primary); letter-spacing: 2px; display: flex; align-items: center; gap: 8px; }
+.drill-header h3::before { content: ''; width: 4px; height: 16px; border-radius: 2px; background: var(--accent-blue); }
+.drill-close {
+  background: rgba(255,255,255,0.08); border: 1px solid rgba(255,255,255,0.12);
+  color: var(--text-secondary); width: 30px; height: 30px; border-radius: 6px;
+  cursor: pointer; font-size: 1rem; display: flex; align-items: center; justify-content: center;
+  transition: all 0.2s;
+}
+.drill-close:hover { background: rgba(255,59,92,0.2); border-color: var(--accent-pink); color: var(--accent-pink); }
+.drill-meta { font-size: 0.72rem; color: var(--text-muted); margin-bottom: 14px; font-family: 'JetBrains Mono', monospace; }
+.drill-table { width: 100%; border-collapse: collapse; font-size: 0.78rem; }
+.drill-table th {
+  text-align: left; padding: 10px 12px; color: var(--text-muted); font-weight: 500; font-size: 0.68rem;
+  letter-spacing: 1px; text-transform: uppercase; border-bottom: 1px solid rgba(80,120,220,0.15);
+  background: rgba(10,18,40,0.5); position: sticky; top: 0;
+}
+.drill-table td { padding: 9px 12px; border-bottom: 1px solid rgba(80,120,220,0.06); color: var(--text-secondary); }
+.drill-table tr:hover td { background: rgba(74,143,255,0.05); }
+.drill-table .code-cell { font-family: 'JetBrains Mono', monospace; color: var(--accent-blue); font-size: 0.72rem; }
+.drill-table .risk-badge { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; }
+.drill-table .risk-badge.high { background: rgba(255,59,92,0.2); color: #FF6B7A; }
+.drill-table .risk-badge.medium { background: rgba(255,140,0,0.2); color: #FFB74D; }
+.drill-table .risk-badge.low { background: rgba(0,229,160,0.2); color: #34D399; }
+.drill-table .status-tag { display: inline-block; padding: 2px 8px; border-radius: 4px; font-size: 0.65rem; font-weight: 600; }
+.drill-table .status-tag.paused { background: rgba(255,59,92,0.15); color: #FF6B7A; }
+.drill-table .status-tag.delayed { background: rgba(255,140,0,0.15); color: #FFB74D; }
+.drill-table .status-tag.risk { background: rgba(139,92,246,0.15); color: #A78BFA; }
+.drill-table .status-tag.normal { background: rgba(0,229,160,0.12); color: #34D399; }
+.drill-table .status-tag.done { background: rgba(74,143,255,0.12); color: #6DB3FF; }
+
 .table-panel {
   background: var(--glass-bg); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
   border: 1px solid var(--glass-border); border-radius: 14px; padding: 20px; margin-bottom: 16px;
@@ -139,27 +187,53 @@ tr:hover td { background: rgba(74,143,255,0.04); }
 <div class="header-logo">🛡</div>
 <div class="header-title"><h1>PROJECT RISK RADAR</h1><div class="sub">智控项目风险雷达 · 未来科技战情室</div></div>
 </div>
-<div class="header-right"><span class="status-dot"></span><span class="live-tag">● LIVE</span><span>SYNC 2026-06-15 10:55:48</span><span>v3.0 · AI-POWERED</span></div>
+<div class="header-right"><span class="status-dot"></span><span class="live-tag">● LIVE</span><span>SYNC 2026-06-15 11:08:23</span><span>v4.0 · AI-POWERED</span></div>
 </div>
 <div class="kpi-row">
-<div class="kpi-card total"><div class="kpi-icon">📋</div><div class="kpi-label">项目总数</div><div class="kpi-value">100</div><div class="kpi-sub">异常 45 · 正常 41</div></div>
-<div class="kpi-card abnormal"><div class="kpi-icon">⚠️</div><div class="kpi-label">异常项目</div><div class="kpi-value">45</div><div class="kpi-sub">异常率 45.0% · 延期 44</div></div>
-<div class="kpi-card highrisk"><div class="kpi-icon">🔴</div><div class="kpi-label">高风险项目</div><div class="kpi-value">15</div><div class="kpi-sub">高风险率 15.0% · 暂停 2</div></div>
-<div class="kpi-card completed"><div class="kpi-icon">✅</div><div class="kpi-label">已完成项目</div><div class="kpi-value">15</div><div class="kpi-sub">完成率 15.0% · 中风险 28</div></div>
-<div class="kpi-card overtime"><div class="kpi-icon">⏱</div><div class="kpi-label">工时超支项目</div><div class="kpi-value">98</div><div class="kpi-sub">需关注资源分配</div></div>
+<div class="kpi-card total" data-drill="all">
+<div class="kpi-icon">📋</div><div class="kpi-label">项目总数</div><div class="kpi-value">100</div><div class="kpi-sub">异常 45 · 正常 41</div><div class="drill-hint">点击查看明细 ▸</div>
 </div>
+<div class="kpi-card abnormal" data-drill="abnormal">
+<div class="kpi-icon">⚠️</div><div class="kpi-label">异常项目</div><div class="kpi-value">45</div><div class="kpi-sub">异常率 45.0% · 延期 44</div><div class="drill-hint">点击查看明细 ▸</div>
+</div>
+<div class="kpi-card highrisk" data-drill="high">
+<div class="kpi-icon">🔴</div><div class="kpi-label">高风险项目</div><div class="kpi-value">15</div><div class="kpi-sub">高风险率 15.0% · 暂停 2</div><div class="drill-hint">点击查看明细 ▸</div>
+</div>
+<div class="kpi-card completed" data-drill="completed">
+<div class="kpi-icon">✅</div><div class="kpi-label">已完成项目</div><div class="kpi-value">15</div><div class="kpi-sub">完成率 15.0% · 中风险 28</div><div class="drill-hint">点击查看明细 ▸</div>
+</div>
+<div class="kpi-card overtime" data-drill="overtime">
+<div class="kpi-icon">⏱</div><div class="kpi-label">工时超支项目</div><div class="kpi-value">98</div><div class="kpi-sub">需关注资源分配</div><div class="drill-hint">点击查看明细 ▸</div>
+</div>
+</div>
+
+<!-- Drill-down Panel -->
+<div class="drill-panel" id="drillPanel">
+<div class="drill-header">
+<h3 id="drillTitle">项目明细</h3>
+<button class="drill-close" onclick="closeDrill()">✕</button>
+</div>
+<div class="drill-meta" id="drillMeta"></div>
+<div class="table-scroll">
+<table class="drill-table">
+<thead><tr><th>项目编码</th><th>项目名称</th><th>负责人</th><th>阶段</th><th>状态</th><th>风险等级</th><th>延期天数</th><th>异常类型</th><th>完成率</th></tr></thead>
+<tbody id="drillBody"></tbody>
+</table>
+</div>
+</div>
+
 <div class="charts-row">
 <div class="chart-panel"><h3>风险等级分布</h3><canvas id="riskChart"></canvas></div>
 <div class="chart-panel"><h3>项目群风险分布</h3><canvas id="groupChart"></canvas></div>
 <div class="chart-panel"><h3>项目阶段分布</h3><canvas id="phaseChart"></canvas></div>
 </div>
-<div class="stat-chips"><div class="stat-chip"><span class="chip-value">12</span><span class="chip-label">资源不足</span></div>
-<div class="stat-chip"><span class="chip-value">11</span><span class="chip-label">依赖阻塞</span></div>
-<div class="stat-chip"><span class="chip-value">11</span><span class="chip-label">数据质量问题</span></div>
-<div class="stat-chip"><span class="chip-value">10</span><span class="chip-label">进度延期</span></div>
-<div class="stat-chip"><span class="chip-value">9</span><span class="chip-label">需求变更</span></div>
-<div class="stat-chip"><span class="chip-value">8</span><span class="chip-label">审批阻塞</span></div>
-<div class="stat-chip"><span class="chip-value">7</span><span class="chip-label">供应商问题</span></div>
+<div class="stat-chips"><div class="stat-chip" data-atype="资源不足"><span class="chip-value">12</span><span class="chip-label">资源不足</span></div>
+<div class="stat-chip" data-atype="依赖阻塞"><span class="chip-value">11</span><span class="chip-label">依赖阻塞</span></div>
+<div class="stat-chip" data-atype="数据质量问题"><span class="chip-value">11</span><span class="chip-label">数据质量问题</span></div>
+<div class="stat-chip" data-atype="进度延期"><span class="chip-value">10</span><span class="chip-label">进度延期</span></div>
+<div class="stat-chip" data-atype="需求变更"><span class="chip-value">9</span><span class="chip-label">需求变更</span></div>
+<div class="stat-chip" data-atype="审批阻塞"><span class="chip-value">8</span><span class="chip-label">审批阻塞</span></div>
+<div class="stat-chip" data-atype="供应商问题"><span class="chip-value">7</span><span class="chip-label">供应商问题</span></div>
 </div>
 <div class="insights-row"><div class="insight-card critical"><div class="insight-icon">⚠</div><div class="insight-body"><div class="insight-title">严重延期预警</div><div class="insight-desc">4 个高风险项目延期超 10 天，2 个超 20 天，需总负责人紧急介入</div></div></div>
 <div class="insight-card critical"><div class="insight-icon">⏸</div><div class="insight-body"><div class="insight-title">项目暂停告警</div><div class="insight-desc">2 个项目处于暂停状态，建议立即启动恢复流程，明确责任人和恢复时间节点</div></div></div>
@@ -182,80 +256,137 @@ tr:hover td { background: rgba(74,143,255,0.04); }
 <tr><td class="code-cell">SYS-AI-06</td><td>AI速胜项目｜费用异常识别PoC</td><td>伊绵京</td><td class="delay-warn">1d</td><td><span class="status-tag delayed">延期</span></td></tr>
 <tr><td class="code-cell">FUND-10</td><td>资金管理平台建设｜复盘评估与运营交接</td><td>王辉</td><td class="delay-warn">0d</td><td><span class="status-tag risk">风险</span></td></tr>
 </tbody></table></div></div>
-<div class="footer"><span>© 2026 智控项目风险雷达 · AI 创新大赛演示版</span><div class="footer-right"><span>数据源: 飞书多维表格</span><span>刷新: 2026-06-15 10:55:48</span></div></div>
+<div class="footer"><span>© 2026 智控项目风险雷达 · AI 创新大赛演示版</span><div class="footer-right"><span>数据源: 飞书多维表格</span><span>刷新: 2026-06-15 11:08:23</span></div></div>
 </div>
 <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
-<script>// ===== Particle Background =====
+<script>// ===== Full Dataset (embedded for drill-down) =====
+var ALL_DATA = [{"项目名称": "资金管理平台｜需求范围冻结", "项目编码": "SYS-FUND-01", "项目负责人": "王辉", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "8.0%"}, {"项目名称": "资金管理平台建设｜关键需求访谈与痛点梳理", "项目编码": "FUND-02", "项目负责人": "王辉", "项目阶段": "需求调研", "当前状态": "暂停", "延期天数": 38, "是否异常": "是", "异常类型": "进度延期；需求变更", "风险等级": "高", "当前完成率": "85.00%", "工时超支率": "21.70%"}, {"项目名称": "资金管理平台建设｜跨部门流程与字段口径确认", "项目编码": "FUND-03", "项目负责人": "王辉", "项目阶段": "需求调研", "当前状态": "延期", "延期天数": 28, "是否异常": "是", "异常类型": "供应商问题", "风险等级": "高", "当前完成率": "90.00%", "工时超支率": "-28.60%"}, {"项目名称": "资金管理平台建设｜方案蓝图与里程碑评审", "项目编码": "FUND-04", "项目负责人": "王辉", "项目阶段": "蓝图确认", "当前状态": "延期", "延期天数": 19, "是否异常": "是", "异常类型": "依赖阻塞", "风险等级": "高", "当前完成率": "90.00%", "工时超支率": "-14.80%"}, {"项目名称": "资金管理平台建设｜核心功能配置与接口开发", "项目编码": "FUND-05", "项目负责人": "王辉", "项目阶段": "系统开发", "当前状态": "风险", "延期天数": 6, "是否异常": "是", "异常类型": "进度延期；依赖阻塞", "风险等级": "低", "当前完成率": "55.00%", "工时超支率": "-18.20%"}, {"项目名称": "资金管理平台建设｜历史数据清洗与权限配置", "项目编码": "FUND-06", "项目负责人": "王辉", "项目阶段": "系统开发", "当前状态": "风险", "延期天数": 1, "是否异常": "是", "异常类型": "供应商问题", "风险等级": "中", "当前完成率": "45.00%", "工时超支率": "-15.00%"}, {"项目名称": "资金管理平台建设｜UAT测试与问题修复", "项目编码": "FUND-07", "项目负责人": "王辉", "项目阶段": "用户验证", "当前状态": "正常", "延期天数": 0, "是否异常": "是", "异常类型": "依赖阻塞", "风险等级": "低", "当前完成率": "17.00%", "工时超支率": "-72.20%"}, {"项目名称": "资金管理平台建设｜切换演练与上线准备", "项目编码": "FUND-08", "项目负责人": "王辉", "项目阶段": "数据切换", "当前状态": "风险", "延期天数": 0, "是否异常": "是", "异常类型": "进度延期", "风险等级": "中", "当前完成率": "10.00%", "工时超支率": "40.90%"}, {"项目名称": "资金管理平台建设｜生产上线与首周保障", "项目编码": "FUND-09", "项目负责人": "王辉", "项目阶段": "上线", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "", "风险等级": "低", "当前完成率": "10.00%", "工时超支率": "-12.90%"}, {"项目名称": "资金管理平台建设｜复盘评估与运营交接", "项目编码": "FUND-10", "项目负责人": "王辉", "项目阶段": "上线", "当前状态": "风险", "延期天数": 0, "是否异常": "是", "异常类型": "依赖阻塞；供应商问题", "风险等级": "高", "当前完成率": "15.00%", "工时超支率": "-16.70%"}, {"项目名称": "经营分析驾驶舱｜指标口径确认", "项目编码": "SYS-BI-01", "项目负责人": "东杰", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "5.0%"}, {"项目名称": "经营分析驾驶舱｜收入看板建模", "项目编码": "SYS-BI-02", "项目负责人": "东杰", "项目阶段": "需求调研", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-60.0%"}, {"项目名称": "经营分析驾驶舱｜成本费用看板建模", "项目编码": "SYS-BI-03", "项目负责人": "东杰", "项目阶段": "蓝图确认", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "85.0%", "工时超支率": "-50.0%"}, {"项目名称": "经营分析驾驶舱｜现金流看板设计", "项目编码": "SYS-BI-04", "项目负责人": "东杰", "项目阶段": "系统开发", "当前状态": "风险", "延期天数": 7, "是否异常": "是", "异常类型": "需求变更", "风险等级": "中", "当前完成率": "36.0%", "工时超支率": "15.0%"}, {"项目名称": "经营分析驾驶舱｜BU经营分析模板", "项目编码": "SYS-BI-05", "项目负责人": "东杰", "项目阶段": "用户验证", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-25.0%"}, {"项目名称": "经营分析驾驶舱｜数据源接口映射", "项目编码": "SYS-BI-06", "项目负责人": "东杰", "项目阶段": "数据切换", "当前状态": "延期", "延期天数": 5, "是否异常": "是", "异常类型": "数据质量问题", "风险等级": "中", "当前完成率": "45.0%", "工时超支率": "66.7%"}, {"项目名称": "经营分析驾驶舱｜驾驶舱原型评审", "项目编码": "SYS-BI-07", "项目负责人": "东杰", "项目阶段": "上线", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "55.0%", "工时超支率": "-55.0%"}, {"项目名称": "经营分析驾驶舱｜管理层指标试运行", "项目编码": "SYS-BI-08", "项目负责人": "东杰", "项目阶段": "数据切换", "当前状态": "风险", "延期天数": 10, "是否异常": "是", "异常类型": "依赖阻塞", "风险等级": "中", "当前完成率": "25.0%", "工时超支率": "4.0%"}, {"项目名称": "经营分析驾驶舱｜异常指标预警规则", "项目编码": "SYS-BI-09", "项目负责人": "东杰", "项目阶段": "上线", "当前状态": "延期", "延期天数": 10, "是否异常": "是", "异常类型": "进度延期", "风险等级": "高", "当前完成率": "55.0%", "工时超支率": "16.7%"}, {"项目名称": "经营分析驾驶舱｜月度汇报版上线", "项目编码": "SYS-BI-10", "项目负责人": "东杰", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "75.0%", "工时超支率": "-16.7%"}, {"项目名称": "主数据治理｜客户主数据清洗", "项目编码": "SYS-MDM-01", "项目负责人": "叶梦蝶", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "5.0%"}, {"项目名称": "主数据治理｜供应商主数据清洗", "项目编码": "SYS-MDM-02", "项目负责人": "叶梦蝶", "项目阶段": "需求调研", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "8.3%"}, {"项目名称": "主数据治理｜项目主数据编码规则", "项目编码": "SYS-MDM-03", "项目负责人": "叶梦蝶", "项目阶段": "蓝图确认", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "75.0%", "工时超支率": "-27.8%"}, {"项目名称": "主数据治理｜组织主数据映射", "项目编码": "SYS-MDM-04", "项目负责人": "叶梦蝶", "项目阶段": "系统开发", "当前状态": "风险", "延期天数": 3, "是否异常": "是", "异常类型": "审批阻塞；需求变更", "风险等级": "中", "当前完成率": "25.0%", "工时超支率": "12.0%"}, {"项目名称": "主数据治理｜物料主数据质量检查", "项目编码": "SYS-MDM-05", "项目负责人": "叶梦蝶", "项目阶段": "用户验证", "当前状态": "延期", "延期天数": 10, "是否异常": "是", "异常类型": "数据质量问题", "风险等级": "中", "当前完成率": "63.0%", "工时超支率": "5.6%"}, {"项目名称": "主数据治理｜主数据申请流程设计", "项目编码": "SYS-MDM-06", "项目负责人": "叶梦蝶", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-37.1%"}, {"项目名称": "主数据治理｜重复数据合并", "项目编码": "SYS-MDM-07", "项目负责人": "叶梦蝶", "项目阶段": "上线", "当前状态": "风险", "延期天数": 10, "是否异常": "是", "异常类型": "资源不足；审批阻塞", "风险等级": "中", "当前完成率": "58.0%", "工时超支率": "30.0%"}, {"项目名称": "主数据治理｜数据责任人确认", "项目编码": "SYS-MDM-08", "项目负责人": "叶梦蝶", "项目阶段": "数据切换", "当前状态": "延期", "延期天数": 3, "是否异常": "是", "异常类型": "资源不足", "风险等级": "高", "当前完成率": "78.0%", "工时超支率": "48.0%"}, {"项目名称": "主数据治理｜MDM接口联调", "项目编码": "SYS-MDM-09", "项目负责人": "叶梦蝶", "项目阶段": "上线", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-15.0%"}, {"项目名称": "主数据治理｜治理周报机制", "项目编码": "SYS-MDM-10", "项目负责人": "叶梦蝶", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "55.0%", "工时超支率": "-50.0%"}, {"项目名称": "智能报销｜差旅规则梳理", "项目编码": "SYS-EXP-01", "项目负责人": "何晴", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "8.0%"}, {"项目名称": "智能报销｜发票验真接口确认", "项目编码": "SYS-EXP-02", "项目负责人": "何晴", "项目阶段": "需求调研", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "55.0%", "工时超支率": "-45.0%"}, {"项目名称": "智能报销｜费用标准配置", "项目编码": "SYS-EXP-03", "项目负责人": "何晴", "项目阶段": "蓝图确认", "当前状态": "风险", "延期天数": 7, "是否异常": "是", "异常类型": "资源不足；审批阻塞", "风险等级": "中", "当前完成率": "58.0%", "工时超支率": "10.0%"}, {"项目名称": "智能报销｜异常报销样本标注", "项目编码": "SYS-EXP-04", "项目负责人": "何晴", "项目阶段": "系统开发", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "65.0%", "工时超支率": "-60.0%"}, {"项目名称": "智能报销｜智能审核规则设计", "项目编码": "SYS-EXP-05", "项目负责人": "何晴", "项目阶段": "用户验证", "当前状态": "延期", "延期天数": 5, "是否异常": "是", "异常类型": "供应商问题；进度延期", "风险等级": "中", "当前完成率": "63.0%", "工时超支率": "48.0%"}, {"项目名称": "智能报销｜移动端提醒测试", "项目编码": "SYS-EXP-06", "项目负责人": "何晴", "项目阶段": "数据切换", "当前状态": "风险", "延期天数": 5, "是否异常": "是", "异常类型": "依赖阻塞；审批阻塞", "风险等级": "中", "当前完成率": "25.0%", "工时超支率": "25.0%"}, {"项目名称": "智能报销｜报销影像识别测试", "项目编码": "SYS-EXP-07", "项目负责人": "何晴", "项目阶段": "上线", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-16.7%"}, {"项目名称": "智能报销｜财务复核工作台", "项目编码": "SYS-EXP-08", "项目负责人": "何晴", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "65.0%", "工时超支率": "-30.0%"}, {"项目名称": "智能报销｜灰度试运行", "项目编码": "SYS-EXP-09", "项目负责人": "何晴", "项目阶段": "用户验证", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "20.0%"}, {"项目名称": "智能报销｜员工宣导材料", "项目编码": "SYS-EXP-10", "项目负责人": "何晴", "项目阶段": "上线", "当前状态": "延期", "延期天数": 10, "是否异常": "是", "异常类型": "进度延期；资源不足", "风险等级": "中", "当前完成率": "55.0%", "工时超支率": "40.0%"}, {"项目名称": "数电二期｜数电票接口升级", "项目编码": "SYS-TAX-01", "项目负责人": "马骁", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "-3.3%"}, {"项目名称": "数电二期｜蓝字发票流程确认", "项目编码": "SYS-TAX-02", "项目负责人": "马骁", "项目阶段": "需求调研", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "55.0%", "工时超支率": "-38.9%"}, {"项目名称": "数电二期｜红字发票流程确认", "项目编码": "SYS-TAX-03", "项目负责人": "马骁", "项目阶段": "蓝图确认", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "35.0%", "工时超支率": "-23.3%"}, {"项目名称": "数电二期｜销项开票场景测试", "项目编码": "SYS-TAX-04", "项目负责人": "马骁", "项目阶段": "系统开发", "当前状态": "延期", "延期天数": 5, "是否异常": "是", "异常类型": "资源不足；进度延期", "风险等级": "高", "当前完成率": "70.0%", "工时超支率": "20.0%"}, {"项目名称": "数电二期｜进项勾选规则确认", "项目编码": "SYS-TAX-05", "项目负责人": "马骁", "项目阶段": "用户验证", "当前状态": "风险", "延期天数": 15, "是否异常": "是", "异常类型": "需求变更；依赖阻塞", "风险等级": "中", "当前完成率": "42.0%", "工时超支率": "100.0%"}, {"项目名称": "数电二期｜税控历史数据迁移", "项目编码": "SYS-TAX-06", "项目负责人": "马骁", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "65.0%", "工时超支率": "-60.0%"}, {"项目名称": "数电二期｜发票归档方案", "项目编码": "SYS-TAX-07", "项目负责人": "马骁", "项目阶段": "上线", "当前状态": "延期", "延期天数": 15, "是否异常": "是", "异常类型": "依赖阻塞；资源不足", "风险等级": "高", "当前完成率": "45.0%", "工时超支率": "66.7%"}, {"项目名称": "数电二期｜税务风险规则配置", "项目编码": "SYS-TAX-08", "项目负责人": "马骁", "项目阶段": "数据切换", "当前状态": "风险", "延期天数": 15, "是否异常": "是", "异常类型": "审批阻塞；资源不足", "风险等级": "中", "当前完成率": "42.0%", "工时超支率": "12.5%"}, {"项目名称": "数电二期｜二期联调测试", "项目编码": "SYS-TAX-09", "项目负责人": "马骁", "项目阶段": "上线", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "75.0%", "工时超支率": "-40.0%"}, {"项目名称": "数电二期｜上线后监控机制", "项目编码": "SYS-TAX-10", "项目负责人": "马骁", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "35.0%", "工时超支率": "-50.0%"}, {"项目名称": "AI速胜项目｜AI场景征集", "项目编码": "SYS-AI-01", "项目负责人": "伊绵京", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "-30.0%"}, {"项目名称": "AI速胜项目｜财务知识库搭建", "项目编码": "SYS-AI-02", "项目负责人": "伊绵京", "项目阶段": "需求调研", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "-37.5%"}, {"项目名称": "AI速胜项目｜周报智能总结", "项目编码": "SYS-AI-03", "项目负责人": "伊绵京", "项目阶段": "蓝图确认", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "55.0%", "工时超支率": "-58.3%"}, {"项目名称": "AI速胜项目｜会议纪要助手", "项目编码": "SYS-AI-04", "项目负责人": "伊绵京", "项目阶段": "系统开发", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-22.2%"}, {"项目名称": "AI速胜项目｜合同摘要助手", "项目编码": "SYS-AI-05", "项目负责人": "伊绵京", "项目阶段": "用户验证", "当前状态": "风险", "延期天数": 7, "是否异常": "是", "异常类型": "资源不足", "风险等级": "中", "当前完成率": "50.0%", "工时超支率": "80.0%"}, {"项目名称": "AI速胜项目｜费用异常识别PoC", "项目编码": "SYS-AI-06", "项目负责人": "伊绵京", "项目阶段": "数据切换", "当前状态": "延期", "延期天数": 1, "是否异常": "是", "异常类型": "供应商问题", "风险等级": "高", "当前完成率": "63.0%", "工时超支率": "15.0%"}, {"项目名称": "AI速胜项目｜资金周报助手", "项目编码": "SYS-AI-07", "项目负责人": "伊绵京", "项目阶段": "上线", "当前状态": "延期", "延期天数": 3, "是否异常": "是", "异常类型": "进度延期；数据质量问题", "风险等级": "高", "当前完成率": "63.0%", "工时超支率": "30.0%"}, {"项目名称": "AI速胜项目｜项目风险雷达", "项目编码": "SYS-AI-08", "项目负责人": "伊绵京", "项目阶段": "用户验证", "当前状态": "风险", "延期天数": 15, "是否异常": "是", "异常类型": "资源不足", "风险等级": "中", "当前完成率": "42.0%", "工时超支率": "20.0%"}, {"项目名称": "AI速胜项目｜AI分享训练营", "项目编码": "SYS-AI-09", "项目负责人": "伊绵京", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "75.0%", "工时超支率": "-30.0%"}, {"项目名称": "AI速胜项目｜速胜项目复盘", "项目编码": "SYS-AI-10", "项目负责人": "伊绵京", "项目阶段": "数据切换", "当前状态": "暂停", "延期天数": 10, "是否异常": "是", "异常类型": "审批阻塞", "风险等级": "高", "当前完成率": "18.0%", "工时超支率": "62.5%"}, {"项目名称": "IPO专项｜三年一期资料清单", "项目编码": "SP-IPO-01", "项目负责人": "郭琳", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "-13.3%"}, {"项目名称": "IPO专项｜ITGC资料归集", "项目编码": "SP-IPO-02", "项目负责人": "郭琳", "项目阶段": "需求调研", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "55.0%", "工时超支率": "-30.0%"}, {"项目名称": "IPO专项｜内控缺陷整改", "项目编码": "SP-IPO-03", "项目负责人": "郭琳", "项目阶段": "蓝图确认", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "35.0%", "工时超支率": "-44.4%"}, {"项目名称": "IPO专项｜收入穿行测试资料", "项目编码": "SP-IPO-04", "项目负责人": "郭琳", "项目阶段": "系统开发", "当前状态": "风险", "延期天数": 15, "是否异常": "是", "异常类型": "审批阻塞；需求变更", "风险等级": "中", "当前完成率": "50.0%", "工时超支率": "15.0%"}, {"项目名称": "IPO专项｜成本费用抽凭资料", "项目编码": "SP-IPO-05", "项目负责人": "郭琳", "项目阶段": "用户验证", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-44.4%"}, {"项目名称": "IPO专项｜银行函证底稿", "项目编码": "SP-IPO-06", "项目负责人": "郭琳", "项目阶段": "数据切换", "当前状态": "延期", "延期天数": 2, "是否异常": "是", "异常类型": "供应商问题", "风险等级": "中", "当前完成率": "55.0%", "工时超支率": "6.7%"}, {"项目名称": "IPO专项｜关联交易核对", "项目编码": "SP-IPO-07", "项目负责人": "郭琳", "项目阶段": "上线", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "75.0%", "工时超支率": "-40.0%"}, {"项目名称": "IPO专项｜招股书财务数据校验", "项目编码": "SP-IPO-08", "项目负责人": "郭琳", "项目阶段": "上线", "当前状态": "风险", "延期天数": 7, "是否异常": "是", "异常类型": "数据质量问题；需求变更", "风险等级": "中", "当前完成率": "36.0%", "工时超支率": "40.0%"}, {"项目名称": "IPO专项｜期后事项更新", "项目编码": "SP-IPO-09", "项目负责人": "郭琳", "项目阶段": "数据切换", "当前状态": "延期", "延期天数": 10, "是否异常": "是", "异常类型": "数据质量问题", "风险等级": "高", "当前完成率": "78.0%", "工时超支率": "16.7%"}, {"项目名称": "IPO专项｜中介反馈闭环", "项目编码": "SP-IPO-10", "项目负责人": "郭琳", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-55.6%"}, {"项目名称": "筹资项目｜授信额度盘点", "项目编码": "SP-FIN-01", "项目负责人": "宋佳", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "0.0%"}, {"项目名称": "筹资项目｜银行融资方案比较", "项目编码": "SP-FIN-02", "项目负责人": "宋佳", "项目阶段": "需求调研", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "0.0%"}, {"项目名称": "筹资项目｜融资成本测算", "项目编码": "SP-FIN-03", "项目负责人": "宋佳", "项目阶段": "蓝图确认", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "65.0%", "工时超支率": "-13.3%"}, {"项目名称": "筹资项目｜提款资料清单", "项目编码": "SP-FIN-04", "项目负责人": "宋佳", "项目阶段": "系统开发", "当前状态": "风险", "延期天数": 2, "是否异常": "是", "异常类型": "需求变更；数据质量问题", "风险等级": "中", "当前完成率": "50.0%", "工时超支率": "66.7%"}, {"项目名称": "筹资项目｜担保及合同审核", "项目编码": "SP-FIN-05", "项目负责人": "宋佳", "项目阶段": "用户验证", "当前状态": "延期", "延期天数": 5, "是否异常": "是", "异常类型": "数据质量问题", "风险等级": "中", "当前完成率": "70.0%", "工时超支率": "40.0%"}, {"项目名称": "筹资项目｜董事会审批材料", "项目编码": "SP-FIN-06", "项目负责人": "宋佳", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-37.5%"}, {"项目名称": "筹资项目｜资金到账计划", "项目编码": "SP-FIN-07", "项目负责人": "宋佳", "项目阶段": "上线", "当前状态": "风险", "延期天数": 7, "是否异常": "是", "异常类型": "数据质量问题；依赖阻塞", "风险等级": "中", "当前完成率": "42.0%", "工时超支率": "10.0%"}, {"项目名称": "筹资项目｜还款排期设计", "项目编码": "SP-FIN-08", "项目负责人": "宋佳", "项目阶段": "数据切换", "当前状态": "延期", "延期天数": 15, "是否异常": "是", "异常类型": "数据质量问题；进度延期", "风险等级": "中", "当前完成率": "63.0%", "工时超支率": "44.4%"}, {"项目名称": "筹资项目｜贷后资料归档", "项目编码": "SP-FIN-09", "项目负责人": "宋佳", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "85.0%", "工时超支率": "-75.0%"}, {"项目名称": "筹资项目｜融资复盘", "项目编码": "SP-FIN-10", "项目负责人": "宋佳", "项目阶段": "上线", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-57.1%"}, {"项目名称": "固定资产梳理｜资产台账清理", "项目编码": "SP-FA-01", "项目负责人": "袁斌", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "-3.3%"}, {"项目名称": "固定资产梳理｜资产盘点计划", "项目编码": "SP-FA-02", "项目负责人": "袁斌", "项目阶段": "需求调研", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "55.0%", "工时超支率": "-54.3%"}, {"项目名称": "固定资产梳理｜BU资产责任人确认", "项目编码": "SP-FA-03", "项目负责人": "袁斌", "项目阶段": "蓝图确认", "当前状态": "风险", "延期天数": 7, "是否异常": "是", "异常类型": "依赖阻塞；需求变更", "风险等级": "中", "当前完成率": "25.0%", "工时超支率": "120.0%"}, {"项目名称": "固定资产梳理｜闲置资产识别", "项目编码": "SP-FA-04", "项目负责人": "袁斌", "项目阶段": "系统开发", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "45.0%", "工时超支率": "-62.5%"}, {"项目名称": "固定资产梳理｜跨部门调拨方案", "项目编码": "SP-FA-05", "项目负责人": "袁斌", "项目阶段": "用户验证", "当前状态": "延期", "延期天数": 2, "是否异常": "是", "异常类型": "供应商问题", "风险等级": "高", "当前完成率": "63.0%", "工时超支率": "25.0%"}, {"项目名称": "固定资产梳理｜采买需求复核", "项目编码": "SP-FA-06", "项目负责人": "袁斌", "项目阶段": "数据切换", "当前状态": "风险", "延期天数": 10, "是否异常": "是", "异常类型": "需求变更；依赖阻塞", "风险等级": "中", "当前完成率": "58.0%", "工时超支率": "12.5%"}, {"项目名称": "固定资产梳理｜资产效率指标设计", "项目编码": "SP-FA-07", "项目负责人": "袁斌", "项目阶段": "上线", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "75.0%", "工时超支率": "-60.0%"}, {"项目名称": "固定资产梳理｜报废减值清单", "项目编码": "SP-FA-08", "项目负责人": "袁斌", "项目阶段": "用户验证", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "85.0%", "工时超支率": "-65.0%"}, {"项目名称": "固定资产梳理｜制度优化建议", "项目编码": "SP-FA-09", "项目负责人": "袁斌", "项目阶段": "上线", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "-10.0%"}, {"项目名称": "固定资产梳理｜专项总结汇报", "项目编码": "SP-FA-10", "项目负责人": "袁斌", "项目阶段": "上线", "当前状态": "延期", "延期天数": 10, "是否异常": "是", "异常类型": "资源不足；数据质量问题", "风险等级": "高", "当前完成率": "70.0%", "工时超支率": "22.9%"}, {"项目名称": "合同风险识别专项｜合同模板梳理", "项目编码": "SP-CON-01", "项目负责人": "秦越", "项目阶段": "立项", "当前状态": "已完成", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "100.0%", "工时超支率": "-5.6%"}, {"项目名称": "合同风险识别专项｜付款条款识别", "项目编码": "SP-CON-02", "项目负责人": "秦越", "项目阶段": "需求调研", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "65.0%", "工时超支率": "-25.0%"}, {"项目名称": "合同风险识别专项｜违约责任识别", "项目编码": "SP-CON-03", "项目负责人": "秦越", "项目阶段": "蓝图确认", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "75.0%", "工时超支率": "-60.0%"}, {"项目名称": "合同风险识别专项｜验收节点识别", "项目编码": "SP-CON-04", "项目负责人": "秦越", "项目阶段": "系统开发", "当前状态": "延期", "延期天数": 5, "是否异常": "是", "异常类型": "进度延期", "风险等级": "高", "当前完成率": "63.0%", "工时超支率": "44.4%"}, {"项目名称": "合同风险识别专项｜合同金额字段校验", "项目编码": "SP-CON-05", "项目负责人": "秦越", "项目阶段": "用户验证", "当前状态": "风险", "延期天数": 5, "是否异常": "是", "异常类型": "资源不足", "风险等级": "中", "当前完成率": "58.0%", "工时超支率": "8.3%"}, {"项目名称": "合同风险识别专项｜供应商风险标签", "项目编码": "SP-CON-06", "项目负责人": "秦越", "项目阶段": "数据切换", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "65.0%", "工时超支率": "-70.0%"}, {"项目名称": "合同风险识别专项｜历史合同样本标注", "项目编码": "SP-CON-07", "项目负责人": "秦越", "项目阶段": "上线", "当前状态": "延期", "延期天数": 5, "是否异常": "是", "异常类型": "资源不足", "风险等级": "中", "当前完成率": "55.0%", "工时超支率": "14.3%"}, {"项目名称": "合同风险识别专项｜智能识别规则测试", "项目编码": "SP-CON-08", "项目负责人": "秦越", "项目阶段": "用户验证", "当前状态": "风险", "延期天数": 15, "是否异常": "是", "异常类型": "数据质量问题；审批阻塞", "风险等级": "中", "当前完成率": "25.0%", "工时超支率": "66.7%"}, {"项目名称": "合同风险识别专项｜风险合同复核", "项目编码": "SP-CON-09", "项目负责人": "秦越", "项目阶段": "用户验证", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "35.0%", "工时超支率": "-16.7%"}, {"项目名称": "合同风险识别专项｜法务财务联动机制", "项目编码": "SP-CON-10", "项目负责人": "秦越", "项目阶段": "用户验证", "当前状态": "正常", "延期天数": 0, "是否异常": "否", "异常类型": "无", "风险等级": "低", "当前完成率": "55.0%", "工时超支率": "-20.0%"}];
+
+// ===== Particle Background =====
 (function() {
   const canvas = document.getElementById('bgCanvas');
   const ctx = canvas.getContext('2d');
   let w, h, particles = [], dataLines = [];
-
   function resize() { w = canvas.width = window.innerWidth; h = canvas.height = window.innerHeight; }
   resize(); window.addEventListener('resize', resize);
-
   class Particle {
     constructor() { this.reset(); this.y = Math.random() * h; }
-    reset() {
-      this.x = Math.random() * w; this.y = -10;
-      this.size = Math.random() * 1.5 + 0.5;
-      this.speed = Math.random() * 0.4 + 0.1;
-      this.opacity = Math.random() * 0.5 + 0.2;
-      this.hue = Math.random() < 0.5 ? 210 : (Math.random() < 0.5 ? 270 : 160);
-    }
+    reset() { this.x = Math.random() * w; this.y = -10; this.size = Math.random() * 1.5 + 0.5; this.speed = Math.random() * 0.4 + 0.1; this.opacity = Math.random() * 0.5 + 0.2; this.hue = Math.random() < 0.5 ? 210 : (Math.random() < 0.5 ? 270 : 160); }
     update() { this.y += this.speed; if (this.y > h + 10) this.reset(); }
-    draw() {
-      ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2);
-      ctx.fillStyle = `hsla(${this.hue}, 70%, 65%, ${this.opacity})`;
-      ctx.fill();
-    }
+    draw() { ctx.beginPath(); ctx.arc(this.x, this.y, this.size, 0, Math.PI * 2); ctx.fillStyle = 'hsla(' + this.hue + ', 70%, 65%, ' + this.opacity + ')'; ctx.fill(); }
   }
-
   class DataLine {
     constructor() { this.reset(); this.progress = Math.random(); }
-    reset() {
-      this.x1 = Math.random() * w; this.y1 = Math.random() * h;
-      this.x2 = this.x1 + (Math.random() - 0.5) * 400;
-      this.y2 = this.y1 + (Math.random() - 0.5) * 300;
-      this.progress = 0;
-      this.speed = Math.random() * 0.003 + 0.001;
-      this.opacity = Math.random() * 0.15 + 0.05;
-    }
+    reset() { this.x1 = Math.random() * w; this.y1 = Math.random() * h; this.x2 = this.x1 + (Math.random() - 0.5) * 400; this.y2 = this.y1 + (Math.random() - 0.5) * 300; this.progress = 0; this.speed = Math.random() * 0.003 + 0.001; this.opacity = Math.random() * 0.15 + 0.05; }
     update() { this.progress += this.speed; if (this.progress > 1) this.reset(); }
     draw() {
-      const px = this.x1 + (this.x2 - this.x1) * this.progress;
-      const py = this.y1 + (this.y2 - this.y1) * this.progress;
+      const px = this.x1 + (this.x2 - this.x1) * this.progress, py = this.y1 + (this.y2 - this.y1) * this.progress;
       ctx.beginPath(); ctx.moveTo(this.x1, this.y1); ctx.lineTo(this.x2, this.y2);
-      ctx.strokeStyle = `rgba(74, 143, 255, ${this.opacity * 0.5})`;
-      ctx.lineWidth = 0.5; ctx.stroke();
-      // Moving dot
+      ctx.strokeStyle = 'rgba(74, 143, 255, ' + (this.opacity * 0.5) + ')'; ctx.lineWidth = 0.5; ctx.stroke();
       ctx.beginPath(); ctx.arc(px, py, 1.5, 0, Math.PI * 2);
-      ctx.fillStyle = `rgba(139, 92, 246, ${this.opacity * 3})`;
-      ctx.fill();
+      ctx.fillStyle = 'rgba(139, 92, 246, ' + (this.opacity * 3) + ')'; ctx.fill();
     }
   }
-
   for (let i = 0; i < 80; i++) particles.push(new Particle());
   for (let i = 0; i < 12; i++) dataLines.push(new DataLine());
-
-  function animate() {
-    ctx.clearRect(0, 0, w, h);
-    particles.forEach(p => { p.update(); p.draw(); });
-    dataLines.forEach(l => { l.update(); l.draw(); });
-    requestAnimationFrame(animate);
-  }
+  function animate() { ctx.clearRect(0, 0, w, h); particles.forEach(p => { p.update(); p.draw(); }); dataLines.forEach(l => { l.update(); l.draw(); }); requestAnimationFrame(animate); }
   animate();
 })();
 
+// ===== Drill-down Logic =====
+function getStatusClass(status) {
+  var map = {'暂停':'paused','延期':'delayed','风险':'risk','正常':'normal','已完成':'done'};
+  return map[status] || 'normal';
+}
+function getRiskBadge(level) {
+  var cls = level === '高' ? 'high' : (level === '中' ? 'medium' : 'low');
+  return '<span class="risk-badge ' + cls + '">' + level + '</span>';
+}
+function getStatusTag(status) {
+  return '<span class="status-tag ' + getStatusClass(status) + '">' + status + '</span>';
+}
+
+function openDrill(type, title) {
+  var panel = document.getElementById('drillPanel');
+  var body = document.getElementById('drillBody');
+  var meta = document.getElementById('drillMeta');
+  document.getElementById('drillTitle').textContent = title;
+
+  // Filter data
+  var filtered = ALL_DATA;
+  if (type === 'abnormal') filtered = ALL_DATA.filter(function(r) { return r['是否异常'] === '是'; });
+  else if (type === 'high') filtered = ALL_DATA.filter(function(r) { return r['风险等级'] === '高'; });
+  else if (type === 'completed') filtered = ALL_DATA.filter(function(r) { return r['当前状态'] === '已完成'; });
+  else if (type === 'overtime') filtered = ALL_DATA.filter(function(r) { return r['工时超支率'] && parseFloat(r['工时超支率']) > 0; });
+  else if (type === 'abnormal_type') {
+    var atype = this.getAttribute('data-atype');
+    filtered = ALL_DATA.filter(function(r) { return r['异常类型'] && r['异常类型'].indexOf(atype) >= 0; });
+    document.getElementById('drillTitle').textContent = '异常类型: ' + atype;
+  }
+
+  meta.textContent = '共 ' + filtered.length + ' 条记录';
+
+  // Sort by delay days desc
+  filtered.sort(function(a, b) { return (b['延期天数']||0) - (a['延期天数']||0); });
+
+  var rows = '';
+  filtered.forEach(function(r) {
+    rows += '<tr><td class="code-cell">' + (r['项目编码']||'') + '</td><td>' + (r['项目名称']||'') + '</td><td>' + (r['项目负责人']||'') + '</td><td>' + (r['项目阶段']||'') + '</td><td>' + getStatusTag(r['当前状态']||'') + '</td><td>' + getRiskBadge(r['风险等级']||'') + '</td><td>' + (r['延期天数']||0) + 'd</td><td>' + (r['异常类型']||'') + '</td><td>' + (r['当前完成率']||'') + '</td></tr>';
+  });
+  body.innerHTML = rows;
+
+  panel.classList.add('open');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+
+  // Highlight active card
+  document.querySelectorAll('.kpi-card').forEach(function(c) { c.classList.remove('active'); });
+  var card = document.querySelector('[data-drill="' + type + '"]');
+  if (card) card.classList.add('active');
+}
+
+function closeDrill() {
+  document.getElementById('drillPanel').classList.remove('open');
+  document.querySelectorAll('.kpi-card').forEach(function(c) { c.classList.remove('active'); });
+}
+
+// Bind KPI card clicks
+document.querySelectorAll('.kpi-card').forEach(function(card) {
+  card.addEventListener('click', function() {
+    var type = this.getAttribute('data-drill');
+    var title = this.querySelector('.kpi-label').textContent + ' · 明细';
+    openDrill(type, title);
+  });
+});
+
+// Bind stat chip clicks
+document.querySelectorAll('.stat-chip').forEach(function(chip) {
+  chip.addEventListener('click', function() {
+    var atype = this.querySelector('.chip-label').textContent;
+    var filtered = ALL_DATA.filter(function(r) { return r['异常类型'] && r['异常类型'].indexOf(atype) >= 0; });
+    var panel = document.getElementById('drillPanel');
+    document.getElementById('drillTitle').textContent = '异常类型: ' + atype;
+    document.getElementById('drillMeta').textContent = '共 ' + filtered.length + ' 条记录';
+    filtered.sort(function(a, b) { return (b['延期天数']||0) - (a['延期天数']||0); });
+    var rows = '';
+    filtered.forEach(function(r) {
+      rows += '<tr><td class="code-cell">' + (r['项目编码']||'') + '</td><td>' + (r['项目名称']||'') + '</td><td>' + (r['项目负责人']||'') + '</td><td>' + (r['项目阶段']||'') + '</td><td>' + getStatusTag(r['当前状态']||'') + '</td><td>' + getRiskBadge(r['风险等级']||'') + '</td><td>' + (r['延期天数']||0) + 'd</td><td>' + (r['异常类型']||'') + '</td><td>' + (r['当前完成率']||'') + '</td></tr>';
+    });
+    document.getElementById('drillBody').innerHTML = rows;
+    panel.classList.add('open');
+    panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+    document.querySelectorAll('.stat-chip').forEach(function(c) { c.classList.remove('active'); });
+    this.classList.add('active');
+  });
+});
+
 // ===== Charts =====
 (function() {
-  const neonColors = ['#FF3B5C', '#FF8C00', '#FFD700', '#00E5A0', '#4A8FFF', '#8B5CF6', '#00B8D4', '#FF6D00', '#A78BFA', '#34D399'];
-  const chartDefaults = {
+  var neonColors = ['#FF3B5C', '#FF8C00', '#FFD700', '#00E5A0', '#4A8FFF', '#8B5CF6', '#00B8D4', '#FF6D00', '#A78BFA', '#34D399'];
+  var chartDefaults = {
     responsive: true, maintainAspectRatio: false,
     plugins: { legend: { position: 'bottom', labels: { color: '#8899B4', padding: 16, font: { size: 12 }, usePointStyle: true, pointStyleWidth: 8 } } }
   };
 
-  // Risk Doughnut
   new Chart(document.getElementById('riskChart'), {
     type: 'doughnut',
     data: {
@@ -268,17 +399,22 @@ tr:hover td { background: rgba(74,143,255,0.04); }
         hoverBorderColor: 'rgba(255,255,255,0.3)',
       }]
     },
-    options: {
-      ...chartDefaults,
+    options: Object.assign({}, chartDefaults, {
       cutout: '65%',
-      plugins: {
-        ...chartDefaults.plugins,
+      onClick: function(evt, elements) {
+        if (elements.length > 0) {
+          var idx = elements[0].index;
+          var types = ['high', 'medium', 'low'];
+          var labels = ['高风险项目', '中风险项目', '低风险项目'];
+          openDrillByRisk(types[idx], labels[idx]);
+        }
+      },
+      plugins: Object.assign({}, chartDefaults.plugins, {
         tooltip: { backgroundColor: 'rgba(12,22,48,0.95)', titleColor: '#E8EDF5', bodyColor: '#8899B4', borderColor: 'rgba(80,120,220,0.3)', borderWidth: 1 }
-      }
-    }
+      })
+    })
   });
 
-  // Group Stacked Bar
   new Chart(document.getElementById('groupChart'), {
     type: 'bar',
     data: {
@@ -289,16 +425,14 @@ tr:hover td { background: rgba(74,143,255,0.04); }
         { label: '低风险', data: [1, 0, 0, 0, 1, 0, 1, 0, 1, 0, 6, 6, 6, 6, 5, 6, 6, 6, 6], backgroundColor: '#00E5A0', borderRadius: 4 }
       ]
     },
-    options: {
-      ...chartDefaults,
+    options: Object.assign({}, chartDefaults, {
       scales: {
         x: { stacked: true, ticks: { color: '#8899B4', maxRotation: 45, font: { size: 11 } }, grid: { color: 'rgba(80,120,220,0.06)' } },
         y: { stacked: true, ticks: { color: '#8899B4' }, grid: { color: 'rgba(80,120,220,0.06)' } }
       }
-    }
+    })
   });
 
-  // Phase Bar
   new Chart(document.getElementById('phaseChart'), {
     type: 'bar',
     data: {
@@ -310,16 +444,35 @@ tr:hover td { background: rgba(74,143,255,0.04); }
         borderWidth: 0
       }]
     },
-    options: {
-      ...chartDefaults,
-      plugins: { ...chartDefaults.plugins, legend: { display: false } },
+    options: Object.assign({}, chartDefaults, {
+      plugins: Object.assign({}, chartDefaults.plugins, { legend: { display: false } }),
       scales: {
         x: { ticks: { color: '#8899B4', maxRotation: 45, font: { size: 10 } }, grid: { display: false } },
         y: { ticks: { color: '#8899B4' }, grid: { color: 'rgba(80,120,220,0.06)' } }
       }
-    }
+    })
   });
 })();
+
+function openDrillByRisk(riskLevel, title) {
+  var filtered = ALL_DATA.filter(function(r) {
+    if (riskLevel === 'high') return r['风险等级'] === '高';
+    if (riskLevel === 'medium') return r['风险等级'] === '中';
+    if (riskLevel === 'low') return r['风险等级'] === '低';
+    return false;
+  });
+  var panel = document.getElementById('drillPanel');
+  document.getElementById('drillTitle').textContent = title + ' · 明细';
+  document.getElementById('drillMeta').textContent = '共 ' + filtered.length + ' 条记录';
+  filtered.sort(function(a, b) { return (b['延期天数']||0) - (a['延期天数']||0); });
+  var rows = '';
+  filtered.forEach(function(r) {
+    rows += '<tr><td class="code-cell">' + (r['项目编码']||'') + '</td><td>' + (r['项目名称']||'') + '</td><td>' + (r['项目负责人']||'') + '</td><td>' + (r['项目阶段']||'') + '</td><td>' + getStatusTag(r['当前状态']||'') + '</td><td>' + getRiskBadge(r['风险等级']||'') + '</td><td>' + (r['延期天数']||0) + 'd</td><td>' + (r['异常类型']||'') + '</td><td>' + (r['当前完成率']||'') + '</td></tr>';
+  });
+  document.getElementById('drillBody').innerHTML = rows;
+  panel.classList.add('open');
+  panel.scrollIntoView({ behavior: 'smooth', block: 'center' });
+}
 </script>
 </body>
 </html>
